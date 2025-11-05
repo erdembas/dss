@@ -273,7 +273,7 @@ public class ValidationData {
 	 */
 	public void excludeOCSPTokensCollection(Collection<OCSPToken> ocspTokensToExclude) {
 		if (Utils.isCollectionNotEmpty(ocspTokensToExclude)) {
-			excludeCRLTokens(ocspTokensToExclude.stream().map(Token::getDSSId).collect(Collectors.toSet()));
+			excludeOCSPTokens(ocspTokensToExclude.stream().map(Token::getDSSId).collect(Collectors.toSet()));
 		}
 	}
 

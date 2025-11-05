@@ -34,12 +34,16 @@ import eu.europa.esig.dss.spi.validation.ValidationData;
 import eu.europa.esig.dss.spi.validation.ValidationDataContainer;
 import eu.europa.esig.dss.xades.validation.XAdESSignature;
 import eu.europa.esig.dss.xml.utils.DomUtils;
+import eu.europa.esig.dss.xades.XAdESSignatureUtils;
 import eu.europa.esig.dss.xades.definition.xades141.XAdES141Element;
 import org.bouncycastle.cert.ocsp.BasicOCSPResp;
 import org.bouncycastle.cert.ocsp.RespID;
 import org.w3c.dom.Element;
 
 import javax.xml.datatype.XMLGregorianCalendar;
+
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509CRL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -291,7 +295,12 @@ public class XAdESLevelC extends XAdESLevelBaselineT {
 			final String thisUpdateAsXmlFormat = xmlGregorianCalendar.toXMLFormat();
 			DomUtils.addTextElement(documentDom, crlIdentifierDom, getXadesNamespace(),getCurrentXAdESElements().getElementIssueTime(), thisUpdateAsXmlFormat);
 
-			// DSSXMLUtils.addTextElement(documentDom, crlRefDom, XAdESNamespaces.XAdES, "xades:Number", ???);
+			try {
+                X509CRL x509CRL = (X509CRL) CertificateFactory.getInstance("X.509").generateCRL(crlToken.getCRLStream());
+                String crlNumber = XAdESSignatureUtils.extractCrlNumber(x509CRL);
+                DomUtils.addTextElement(documentDom, crlIdentifierDom, getXadesNamespace(), getCurrentXAdESElements().getElementNumber(), crlNumber);
+            } catch (Exception ignored) {
+            }
 
 		}
 	}

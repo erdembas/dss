@@ -35,12 +35,20 @@ import eu.europa.esig.dss.model.ReferenceValidation;
 import eu.europa.esig.dss.model.signature.SignatureCryptographicVerification;
 import eu.europa.esig.dss.xades.validation.XAdESSignature;
 import org.apache.xml.security.signature.Reference;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1Integer;
+import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.ASN1Primitive;
+import org.bouncycastle.asn1.x509.Extension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.security.cert.X509CRL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -200,4 +208,52 @@ public final class XAdESSignatureUtils {
 		return null;
 	}
 
+	/**
+     * Extracts the CRL Number extension from an X509CRL object using Bouncy Castle.
+     * This method correctly handles the ASN.1/DER structure where the INTEGER value
+     * is encapsulated within an OCTET STRING.
+     *
+     * @param crl The X509CRL object to be processed.
+     * @return The String representation of the CRL Number.
+     * @throws IOException              If an error occurs during ASN.1/DER parsing.
+     * @throws IllegalArgumentException If the CRL Number extension is not found or has an invalid structure.
+     */
+    public static String extractCrlNumber(X509CRL crl) throws IOException, IllegalArgumentException {
+
+        // 1. Retrieve the raw DER-encoded value of the CRL Number extension (OID: 2.5.29.20).
+        // Using Extension.cRLNumber.getId() is cleaner than hardcoding the OID string.
+        byte[] extensionValue = crl.getExtensionValue(Extension.cRLNumber.getId());
+
+        if (extensionValue == null) {
+            throw new IllegalArgumentException("CRL Number extension (" + Extension.cRLNumber.getId() + ") not found in the CRL.");
+        }
+
+        // --- Bouncy Castle ASN.1/DER Decoding ---
+
+        // Step 1: The value returned by getExtensionValue() is the DER encoding
+        // of an OCTET STRING that wraps the actual CRL Number INTEGER.
+        ASN1OctetString octetString;
+        try {
+            // Decode the outer layer (the wrapper OCTET STRING).
+            octetString = (ASN1OctetString) ASN1Primitive.fromByteArray(extensionValue);
+        } catch (ClassCastException e) {
+            throw new IOException("The outer layer of the CRL extension is not an expected OCTET STRING.", e);
+        }
+
+        // Step 2: Decode the contents of the OCTET STRING, which should be the ASN.1 INTEGER.
+        try (ASN1InputStream aIn = new ASN1InputStream(octetString.getOctets())) {
+
+            // Read the first object inside the OCTET STRING (which should be the INTEGER).
+            ASN1Primitive primitive = aIn.readObject();
+
+            if (!(primitive instanceof ASN1Integer)) {
+                throw new IOException("The content of the CRL Number extension is not the expected INTEGER type.");
+            }
+
+            // Retrieve the BigInteger value from the ASN1Integer object.
+            BigInteger crlNumber = ((ASN1Integer) primitive).getPositiveValue();
+
+            return crlNumber.toString();
+        }
+    }
 }

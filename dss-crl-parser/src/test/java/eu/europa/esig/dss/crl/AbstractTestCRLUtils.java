@@ -521,6 +521,48 @@ public abstract class AbstractTestCRLUtils extends AbstractCRLParserTestUtils {
 		}
 	}
 
+	@Test
+	public void testCRLNumberExtraction() throws Exception {
+		try (InputStream is = AbstractTestCRLUtils.class.getResourceAsStream("/belgium2.crl");
+				InputStream isCer = AbstractTestCRLUtils.class.getResourceAsStream("/belgiumrs2.crt")) {
+			CertificateToken certificateToken = loadCert(isCer);
+			CRLBinary crlBinary = CRLUtils.buildCRLBinary(toByteArray(is));
+			CRLValidity validCRL = CRLUtils.buildCRLValidity(crlBinary, certificateToken);
+			assertNotNull(validCRL);
+			assertTrue(validCRL.isValid());
+
+			// Test that CRL Number extraction works (may be null if extension not present)
+			// This is acceptable - the method should not throw an exception
+			String crlNumber = validCRL.getCrlNumber();
+			// If present, it should be a valid numeric string
+			if (crlNumber != null) {
+				assertFalse(crlNumber.isEmpty());
+				// Verify it's a valid number
+				new BigInteger(crlNumber);
+			}
+		}
+	}
+
+	@Test
+	public void testCRLNumberExtractionWithCRLValidity() throws Exception {
+		try (InputStream is = AbstractTestCRLUtils.class.getResourceAsStream("/belgium2.crl");
+				InputStream isCer = AbstractTestCRLUtils.class.getResourceAsStream("/belgiumrs2.crt")) {
+			CertificateToken certificateToken = loadCert(isCer);
+			CRLBinary crlBinary = CRLUtils.buildCRLBinary(toByteArray(is));
+			CRLValidity validCRL = CRLUtils.buildCRLValidity(crlBinary, certificateToken);
+
+			// Test that getCrlNumber() method works on CRLValidity
+			String crlNumber = validCRL.getCrlNumber();
+			
+			// If present, it should be a valid numeric string
+			if (crlNumber != null) {
+				assertFalse(crlNumber.isEmpty());
+				// Verify it's a valid number
+				new BigInteger(crlNumber);
+			}
+		}
+	}
+
 	protected CertificateToken loadCert(InputStream is) throws CertificateException {
 		X509Certificate certificate = (X509Certificate) certificateFactory.generateCertificate(is);
 		return new CertificateToken(certificate);

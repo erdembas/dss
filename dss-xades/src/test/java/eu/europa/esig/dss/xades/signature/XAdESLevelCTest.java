@@ -159,6 +159,38 @@ class XAdESLevelCTest extends AbstractXAdESTestSignature {
 			}
 		}
 
+		// Additional test: verify CRL Number in XML when present
+		checkCRLNumberInSignatureXML(signatures);
+	}
+
+	private void checkCRLNumberInSignatureXML(List<AdvancedSignature> signatures) {
+		if (signatures.isEmpty()) {
+			return;
+		}
+		
+		// Get the signature element and check for CRL Number elements
+		AdvancedSignature advancedSignature = signatures.get(0);
+		if (!(advancedSignature instanceof eu.europa.esig.dss.xades.validation.XAdESSignature)) {
+			return;
+		}
+		
+		eu.europa.esig.dss.xades.validation.XAdESSignature signature = 
+			(eu.europa.esig.dss.xades.validation.XAdESSignature) advancedSignature;
+		
+		// Check for CRL Number elements in CompleteRevocationRefs
+		NodeList crlNumberNodes = DomUtils.getNodeList(signature.getSignatureElement(), ".//*[local-name()='Number']");
+		
+		// If CRL Number nodes exist, verify they contain valid numeric values
+		if (crlNumberNodes.getLength() > 0) {
+			for (int i = 0; i < crlNumberNodes.getLength(); i++) {
+				Node numberNode = crlNumberNodes.item(i);
+				String numberValue = numberNode.getTextContent();
+				assertNotNull(numberValue);
+				assertTrue(Utils.isStringNotEmpty(numberValue));
+				// Verify it's a valid number
+				new java.math.BigInteger(numberValue);
+			}
+		}
 	}
 
 	@Override

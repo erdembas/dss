@@ -28,6 +28,10 @@ import eu.europa.esig.dss.enumerations.KeyUsageBit;
 import eu.europa.esig.dss.enumerations.SignatureAlgorithm;
 import eu.europa.esig.dss.model.DSSException;
 import eu.europa.esig.dss.model.x509.CertificateToken;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1Integer;
+import org.bouncycastle.asn1.ASN1OctetString;
+import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.slf4j.Logger;
@@ -97,6 +101,7 @@ public class CRLUtilsX509CRLImpl extends AbstractCRLUtils implements ICRLUtils {
 			crlValidity.setCriticalExtensionsOid(x509CRL.getCriticalExtensionOIDs());
 			extractIssuingDistributionPointBinary(crlValidity, x509CRL.getExtensionValue(Extension.issuingDistributionPoint.getId()));
 			extractExpiredCertsOnCRL(crlValidity, x509CRL.getExtensionValue(Extension.expiredCertsOnCRL.getId()));
+			extractCrlNumber(crlValidity, x509CRL);
 
 			checkSignatureValue(x509CRL, issuerToken, crlValidity);
 			if (crlValidity.isSignatureIntact()) {
@@ -176,6 +181,35 @@ public class CRLUtilsX509CRLImpl extends AbstractCRLUtils implements ICRLUtils {
 			} catch (CertificateException e1) {
 				throw new DSSException("Unable to create CertificateFactory", e1);
 			}
+		}
+	}
+
+	/**
+	 * Extracts the CRL Number extension from an X509CRL and sets it in the CRLValidity object.
+	 *
+	 * @param crlValidity the {@link CRLValidity} object to populate
+	 * @param x509CRL the {@link X509CRL} to extract the CRL Number from
+	 */
+	private void extractCrlNumber(CRLValidity crlValidity, X509CRL x509CRL) {
+		try {
+			byte[] extensionValue = x509CRL.getExtensionValue(Extension.cRLNumber.getId());
+			if (extensionValue == null) {
+				return;
+			}
+
+			// Decode the outer OCTET STRING
+			ASN1OctetString octetString = (ASN1OctetString) ASN1Primitive.fromByteArray(extensionValue);
+
+			// Decode the inner INTEGER
+			try (ASN1InputStream aIn = new ASN1InputStream(octetString.getOctets())) {
+				ASN1Primitive primitive = aIn.readObject();
+				if (primitive instanceof ASN1Integer) {
+					BigInteger crlNumber = ((ASN1Integer) primitive).getPositiveValue();
+					crlValidity.setCrlNumber(crlNumber.toString());
+				}
+			}
+		} catch (Exception e) {
+			LOG.warn("Unable to extract CRL Number extension : {}", e.getMessage());
 		}
 	}
 

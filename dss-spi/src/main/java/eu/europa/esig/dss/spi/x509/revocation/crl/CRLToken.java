@@ -160,6 +160,18 @@ public class CRLToken extends RevocationToken<CRL> {
 		return crlValidity;
 	}
 
+	/**
+	 * Returns the CRL Number extension value from the associated CRLValidity
+	 *
+	 * @return {@link String} CRL Number, or null if not present
+	 */
+	public String getCrlNumber() {
+		if (crlValidity != null) {
+			return crlValidity.getCrlNumber();
+		}
+		return null;
+	}
+
 	@Override
 	public X500Principal getIssuerX500Principal() {
 		if (crlValidity.getIssuerToken() != null) { // if the signature is invalid, the issuer is null
